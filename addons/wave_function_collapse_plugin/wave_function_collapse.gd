@@ -31,10 +31,12 @@ func _enter_tree():
 			tab_container.current_tab = i
 			break
 	
+	connect("scene_changed", self, "_on_scene_changed")
+	
 	# Reload the plugin when the button is pressed.
 	dock.connect("reload_button_pressed", self, "_on_reload_button_pressed")
 	
-	# Connect the other events.
+	# Connect the other dock events.
 	dock.connect("select_modules_source_pressed", self, "_on_select_modules_source")
 	dock.connect("select_modules_target_pressed", self, "_on_select_modules_target")
 	dock.connect("extract_modules_pressed", self, "extract_modules")
@@ -54,6 +56,13 @@ func _exit_tree():
 	remove_control_from_docks(dock)
 	dock.queue_free()
 
+
+func _on_scene_changed(scene: SceneTree):
+	# When the scene changes, the selected source and target nodes are no longer valid.
+	modules_source = null
+	modules_target = null
+	
+	dock.reset_source_and_target()
 
 # Reloads this plugin.
 func reload_plugin():
@@ -76,7 +85,7 @@ func _on_select_modules_source():
 	
 	# Use the first as the target.
 	modules_source = selection[0]
-	var mesh_count := list_top_level_meshes(modules_source).size()
+	var mesh_count := list_top_level_mesh_instances(modules_source).size()
 	
 	# Update the interface.
 	dock.set_modules_source_name(modules_source.get_name())
@@ -108,7 +117,7 @@ func is_modules_source_ok(root: Node) -> Array:
 		return [false, "Node not found"]
 	
 	# Can we find ArrayMeshes?
-	var mesh_count := list_top_level_meshes(modules_source).size()
+	var mesh_count := list_top_level_mesh_instances(modules_source).size()
 	
 	if mesh_count == 0:
 		# Can't get modules if there are no meshes.
@@ -134,7 +143,7 @@ func is_modules_target_ok(root: Node) -> Array:
 
 # Takes a root node, returns all the MeshInstance nodes that are direct children.
 # Only inclues MeshInstance nodes that use an ArrayMesh
-func list_top_level_meshes(root: Node) -> Array:
+func list_top_level_mesh_instances(root: Node) -> Array:
 	var result := []
 	
 	for node in root.get_children():
@@ -156,3 +165,27 @@ func extract_modules():
 	if !source_status[0] || !target_status[1]:
 		return
 	
+	for mesh_instance in list_top_level_mesh_instances(modules_source):
+		# For now just create a triangle.
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		# Make it not smooth.
+		st.add_smooth_group(false)
+		
+		st.add_vertex(Vector3(1, 0, 0))
+		st.add_vertex(Vector3(0, 1, 0))
+		st.add_vertex(Vector3(0, 0, 1))
+		
+		# Generate indices (optional)
+		st.index()
+		# Calculate the normals automatically.
+		st.generate_normals()
+		
+		var result_mesh := st.commit()
+		
+		var result_mesh_instance := MeshInstance.new()
+		result_mesh_instance.mesh = result_mesh
+		
+		# Add the mesh to the tree. `set_owner` needs to happen after `add_child`
+		modules_target.add_child(result_mesh_instance)
+		result_mesh_instance.set_owner(modules_target.owner)

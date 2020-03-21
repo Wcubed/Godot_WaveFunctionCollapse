@@ -26,7 +26,20 @@ var modules_target_ok := false
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	pass # Replace with function body.
+	reset_source_and_target()
+
+
+# Resets all the source and target fields to their defaults.
+func reset_source_and_target():
+	modules_source_label.text = ""
+	modules_source_status_label.text = ""
+	modules_target_label.text = ""
+	modules_target_status_label.text = ""
+	
+	modules_source_ok = false
+	modules_target_ok = false
+	
+	extract_modules_button.disabled = true
 
 
 func set_modules_source_name(root_name: String):
