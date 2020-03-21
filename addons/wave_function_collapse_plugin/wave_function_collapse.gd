@@ -11,7 +11,7 @@ var modules_source : Node = null
 var modules_target : Node = null
 
 func _enter_tree():
-	print("Wave function collaps plugin loaded.")
+	print("Wave function collaps plugin loaded")
 	
 	# Add our custom dock to the right-hand panel.
 	dock = preload("./ui/wfc_dock.tscn").instance()
@@ -165,6 +165,8 @@ func extract_modules():
 	if !source_status[0] || !target_status[1]:
 		return
 	
+	var extracted_modules_count := 0
+	
 	for mesh_instance in list_top_level_mesh_instances(modules_source):
 		# For now just create a triangle.
 		var st := SurfaceTool.new()
@@ -184,8 +186,15 @@ func extract_modules():
 		var result_mesh := st.commit()
 		
 		var result_mesh_instance := MeshInstance.new()
+		result_mesh_instance.name = "Module"
 		result_mesh_instance.mesh = result_mesh
 		
 		# Add the mesh to the tree. `set_owner` needs to happen after `add_child`
 		modules_target.add_child(result_mesh_instance)
 		result_mesh_instance.set_owner(modules_target.owner)
+		
+		extracted_modules_count += 1
+	
+	print("%d modules extracted from `%s`, into `%s`" % [extracted_modules_count, modules_source.name, modules_target.name])
+	# Extraction done, reset the ui.
+	dock.reset_source_and_target()
