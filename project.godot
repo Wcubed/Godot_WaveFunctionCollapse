@@ -23,6 +23,10 @@ config/icon="res://icon.png"
 
 enabled=PoolStringArray( "wave_fuction_collapse_plugin" )
 
+[gdnative]
+
+singletons=[  ]
+
 [rendering]
 
 environment/default_environment="res://default_env.tres"

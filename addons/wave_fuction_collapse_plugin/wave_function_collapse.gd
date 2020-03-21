@@ -1,11 +1,13 @@
 tool
 extends EditorPlugin
 
+const DOCK_NAME := "__RUNNING_WFC_DOCK"
+
 var dock
 
 func _enter_tree():
 	# See if our dock is already there, that means this plugin was reloaded!
-	var previous_dock = get_tree().get_root().find_node("__RUNNING_WFC_DOCK*", true, false)
+	var previous_dock = get_tree().get_root().find_node(DOCK_NAME + "*", true, false)
 	if previous_dock != null:
 		print("Wave function collaps plugin reloaded.")
 		# Hey look, our dock already exists, we got reloaded while we were active.
@@ -15,11 +17,11 @@ func _enter_tree():
 		print("Wave function collaps plugin loaded.")
 	
 	# Add our custom dock to the right-hand panel.
-	dock = preload("./scenes/wfc_dock.tscn").instance()
+	dock = preload("./ui/wfc_dock.tscn").instance()
 	# Set the name to something that can't be mistaken for something else.
 	# If we used the default name, we could confuse our active dock and
 	# the scene open in the editor.
-	dock.name = "__RUNNING_WFC_DOCK"
+	dock.name = DOCK_NAME
 	add_control_to_dock(DOCK_SLOT_RIGHT_UL, dock)
 	
 	# Get the TabContainer of this panel.
@@ -41,7 +43,7 @@ func _exit_tree():
 	if dock == null:
 		# We somehow lost our dock. Possibly due to a script update while we were running.
 		# See if we can find it.
-		var previous_dock = get_tree().get_root().find_node("__RUNNING_WFC_DOCK*", true, false)
+		var previous_dock = get_tree().get_root().find_node(DOCK_NAME + "*", true, false)
 		if previous_dock != null:
 			dock = previous_dock
 		else:
