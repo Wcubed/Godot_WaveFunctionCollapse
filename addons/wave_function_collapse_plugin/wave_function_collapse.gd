@@ -37,7 +37,7 @@ func _enter_tree():
 	# Connect the other events.
 	dock.connect("select_modules_source_pressed", self, "_on_select_modules_source")
 	dock.connect("select_modules_target_pressed", self, "_on_select_modules_target")
-	dock.connect("extract_modules_pressed", self, "_on_extract_modules")
+	dock.connect("extract_modules_pressed", self, "extract_modules")
 
 
 func _exit_tree():
@@ -99,14 +99,6 @@ func _on_select_modules_target():
 	var status := is_modules_target_ok(modules_target)
 	dock.set_modules_target_status(status[1], status[0])
 
-
-func _on_extract_module():
-	var mesh_instances : Array = list_top_level_meshes(modules_source)
-	
-	for instance in mesh_instances:
-		var mesh : Mesh = instance.mesh
-		print(mesh)
-
 # ---- Wave function collapse related stuff ----
 
 # Checks if the given modules source is good to go.
@@ -146,3 +138,16 @@ func list_top_level_meshes(root: Node) -> Array:
 				result.append(node)
 	
 	return result
+
+
+func extract_modules():
+	# First check if source and target nodes are still alright.
+	var source_status := is_modules_source_ok(modules_source)
+	var target_status := is_modules_target_ok(modules_target)
+	dock.set_modules_source_status(source_status[1], source_status[0])
+	dock.set_modules_target_status(target_status[1], target_status[0])
+	
+	# Are both still ok?
+	if !source_status[0] || !target_status[1]:
+		return
+	

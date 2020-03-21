@@ -7,3 +7,5 @@
 [node name="waveform_modules" parent="." instance=ExtResource( 1 )]
 
 [node name="modules_target" type="Spatial" parent="."]
+
+[node name="Spatial" type="Spatial" parent="modules_target"]
