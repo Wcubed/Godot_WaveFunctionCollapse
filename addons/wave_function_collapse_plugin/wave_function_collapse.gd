@@ -5,6 +5,9 @@ const DOCK_NAME := "__RUNNING_WFC_DOCK"
 
 var dock
 
+# Root node where we will place imported modules.
+var modules_root : Node = null
+
 func _enter_tree():
 	print("Wave function collaps plugin loaded.")
 	
@@ -27,7 +30,10 @@ func _enter_tree():
 			break
 	
 	# Reload the plugin when the button is pressed.
-	dock.get_reload_button().connect("pressed", self, "_on_reload_button_pressed")
+	dock.connect("reload_button_pressed", self, "_on_reload_button_pressed")
+	
+	# Connect the other events.
+	dock.connect("select_modules_root_pressed", self, "_on_select_modules_root")
 
 
 func _exit_tree():
@@ -52,3 +58,14 @@ func reload_plugin():
 
 func _on_reload_button_pressed():
 	call_deferred("reload_plugin")
+
+# Get's the current selected node, and sets it as the modules root.
+func _on_select_modules_root():
+	var selection := get_editor_interface().get_selection().get_selected_nodes()
+	print(selection)
+	
+	if selection.size() != 0:
+		# Use the first as the target.
+		modules_root = selection[0]
+		# Update the interface.
+		dock.set_modules_root(modules_root)
