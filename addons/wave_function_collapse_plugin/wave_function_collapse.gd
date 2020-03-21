@@ -5,8 +5,10 @@ const DOCK_NAME := "__RUNNING_WFC_DOCK"
 
 var dock: WcfDock = null
 
-# Root node where we will place imported modules.
-var modules_root : Node = null
+# Root node we will search for ArrayMeshes to extract modules from.
+var modules_source : Node = null
+# Root node we will place found modules under.
+var modules_target : Node = null
 
 func _enter_tree():
 	print("Wave function collaps plugin loaded.")
@@ -33,7 +35,9 @@ func _enter_tree():
 	dock.connect("reload_button_pressed", self, "_on_reload_button_pressed")
 	
 	# Connect the other events.
-	dock.connect("select_modules_root_pressed", self, "_on_select_modules_root")
+	dock.connect("select_modules_source_pressed", self, "_on_select_modules_source")
+	dock.connect("select_modules_target_pressed", self, "_on_select_modules_target")
+	dock.connect("extract_modules_pressed", self, "_on_extract_modules")
 
 
 func _exit_tree():
@@ -50,47 +54,95 @@ func _exit_tree():
 	remove_control_from_docks(dock)
 	dock.queue_free()
 
+
 # Reloads this plugin.
 func reload_plugin():
 	var editor_interface := get_editor_interface()
 	editor_interface.set_plugin_enabled("wave_function_collapse_plugin", false)
 	editor_interface.set_plugin_enabled("wave_function_collapse_plugin", true)
 
+
 func _on_reload_button_pressed():
 	call_deferred("reload_plugin")
 
-# Get's the current selected node, and sets it as the modules root.
-func _on_select_modules_root():
+
+# Get's the current selected node, and sets it as the modules source root.
+func _on_select_modules_source():
 	var selection := get_editor_interface().get_selection().get_selected_nodes()
-	print(selection)
 	
 	if selection.size() == 0:
 		# Nothing selected.
 		return
 	
 	# Use the first as the target.
-	modules_root = selection[0]
-	print(modules_root)
-	var mesh_count := list_top_level_meshes(modules_root).size()
+	modules_source = selection[0]
+	var mesh_count := list_top_level_meshes(modules_source).size()
 	
 	# Update the interface.
-	dock.set_modules_root_name(modules_root.get_name())
-	if mesh_count == 0:
-		# Can't get modules if there are no meshes.
-		dock.set_modules_root_status("No top level MeshInstances found", false)
-	elif mesh_count == 1:
-		dock.set_modules_root_status("1 MeshInstance found", true)
-	else:
-		dock.set_modules_root_status("%d MeshInstances found" % mesh_count, true)
+	dock.set_modules_source_name(modules_source.get_name())
+	var status := is_modules_source_ok(modules_source)
+	dock.set_modules_source_status(status[1], status[0])
+
+
+# Get's the current selected node, and sets it as the modules target.
+func _on_select_modules_target():
+	var selection := get_editor_interface().get_selection().get_selected_nodes()
+	if selection.size() == 0:
+		# Nothing selected.
+		return
+	
+	# Use the first as the target.
+	modules_target = selection[0]
+	
+	# Update the interface.
+	dock.set_modules_target_name(modules_target.get_name())
+	var status := is_modules_target_ok(modules_target)
+	dock.set_modules_target_status(status[1], status[0])
+
+
+func _on_extract_module():
+	var mesh_instances : Array = list_top_level_meshes(modules_source)
+	
+	for instance in mesh_instances:
+		var mesh : Mesh = instance.mesh
+		print(mesh)
 
 # ---- Wave function collapse related stuff ----
 
-# Takes a root node, returns all the mesh nodes that are direct children.
+# Checks if the given modules source is good to go.
+# Returns an array: [ok?: bool, human_readable_result: String]
+func is_modules_source_ok(root: Node) -> Array:
+	# Can we find ArrayMeshes?
+	var mesh_count := list_top_level_meshes(modules_source).size()
+	
+	if mesh_count == 0:
+		# Can't get modules if there are no meshes.
+		return [false, "No top level MeshInstances with ArrayMeshes found"]
+	elif mesh_count == 1:
+		return [true, "1 MeshInstance found"]
+	else:
+		return [true, "%d MeshInstances found" % mesh_count]
+
+
+# Checks if the given modules targetis good to go.
+# Returns an array: [ok?: bool, human_readable_result: String]
+func is_modules_target_ok(root: Node) -> Array:
+	var mesh_count := list_top_level_meshes(modules_source).size()
+	# Is target an Spatial node with 0 children?
+	if modules_target.get_class() != "Spatial" || modules_target.get_children().size() != 0:
+		return [false, "Target should be a Spatial node with 0 children"]
+	else:
+		return [true, "Target ok"]
+
+
+# Takes a root node, returns all the MeshInstance nodes that are direct children.
+# Only inclues MeshInstance nodes that use an ArrayMesh
 func list_top_level_meshes(root: Node) -> Array:
 	var result := []
 	
 	for node in root.get_children():
 		if node.get_class() == "MeshInstance":
-			result.append(node)
+			if node.mesh.get_class() == "ArrayMesh":
+				result.append(node)
 	
 	return result

@@ -22,11 +22,11 @@ margin_top = 24.0
 margin_right = 1023.0
 margin_bottom = 28.0
 
-[node name="SelectModulesRootTarget" type="Button" parent="."]
+[node name="SelectModulesSource" type="Button" parent="."]
 margin_top = 32.0
 margin_right = 1023.0
 margin_bottom = 52.0
-text = "Select module root"
+text = "Select modules source"
 
 [node name="GridContainer" type="GridContainer" parent="."]
 margin_top = 56.0
@@ -44,7 +44,7 @@ size_flags_vertical = 2
 text = "Name:"
 autowrap = true
 
-[node name="ModulesRootLabel" type="Label" parent="GridContainer"]
+[node name="ModulesSourceLabel" type="Label" parent="GridContainer"]
 margin_left = 47.0
 margin_right = 1023.0
 margin_bottom = 14.0
@@ -59,7 +59,57 @@ margin_bottom = 32.0
 size_flags_vertical = 2
 text = "Status:"
 
-[node name="ModulesRootStatus" type="Label" parent="GridContainer"]
+[node name="ModulesSourceStatus" type="Label" parent="GridContainer"]
+margin_left = 47.0
+margin_top = 18.0
+margin_right = 1023.0
+margin_bottom = 32.0
+size_flags_vertical = 2
+autowrap = true
+
+[node name="HSeparator3" type="HSeparator" parent="."]
+margin_top = 92.0
+margin_right = 1023.0
+margin_bottom = 96.0
+
+[node name="SelectModulesTarget" type="Button" parent="."]
+margin_top = 100.0
+margin_right = 1023.0
+margin_bottom = 120.0
+text = "Select modules target"
+
+[node name="GridContainer2" type="GridContainer" parent="."]
+margin_top = 124.0
+margin_right = 1023.0
+margin_bottom = 156.0
+columns = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="GridContainer2"]
+margin_right = 43.0
+margin_bottom = 14.0
+size_flags_vertical = 2
+text = "Name:"
+autowrap = true
+
+[node name="ModulesTargetLabel" type="Label" parent="GridContainer2"]
+margin_left = 47.0
+margin_right = 1023.0
+margin_bottom = 14.0
+size_flags_horizontal = 3
+size_flags_vertical = 2
+autowrap = true
+
+[node name="Label2" type="Label" parent="GridContainer2"]
+margin_top = 18.0
+margin_right = 43.0
+margin_bottom = 32.0
+size_flags_vertical = 2
+text = "Status:"
+
+[node name="ModulesTargetStatus" type="Label" parent="GridContainer2"]
 margin_left = 47.0
 margin_top = 18.0
 margin_right = 1023.0
@@ -68,8 +118,17 @@ size_flags_vertical = 2
 autowrap = true
 
 [node name="HSeparator2" type="HSeparator" parent="."]
-margin_top = 92.0
+margin_top = 160.0
 margin_right = 1023.0
-margin_bottom = 96.0
+margin_bottom = 164.0
+
+[node name="ExtractModulesButton" type="Button" parent="."]
+margin_top = 168.0
+margin_right = 1023.0
+margin_bottom = 188.0
+disabled = true
+text = "Extract modules"
 [connection signal="pressed" from="ReloadPluginButton" to="." method="_on_ReloadPluginButton_pressed"]
-[connection signal="pressed" from="SelectModulesRootTarget" to="." method="_on_SelectModulesRootTarget_pressed"]
+[connection signal="pressed" from="SelectModulesSource" to="." method="_on_SelectModulesRootTarget_pressed"]
+[connection signal="pressed" from="SelectModulesTarget" to="." method="_on_SelectModulesTarget_pressed"]
+[connection signal="pressed" from="ExtractModulesButton" to="." method="_on_ExtractModulesButton_pressed"]
