@@ -8,9 +8,14 @@
 
 config_version=4
 
-_global_script_classes=[  ]
+_global_script_classes=[ {
+"base": "VBoxContainer",
+"class": "WcfDock",
+"language": "GDScript",
+"path": "res://addons/wave_function_collapse_plugin/ui/wfc_dock.gd"
+} ]
 _global_script_class_icons={
-
+"WcfDock": ""
 }
 
 [application]

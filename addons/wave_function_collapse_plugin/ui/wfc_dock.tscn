@@ -22,17 +22,54 @@ margin_top = 24.0
 margin_right = 1023.0
 margin_bottom = 28.0
 
-[node name="ModulesRootLabel" type="Label" parent="."]
+[node name="SelectModulesRootTarget" type="Button" parent="."]
 margin_top = 32.0
 margin_right = 1023.0
-margin_bottom = 46.0
-size_flags_horizontal = 3
-clip_text = true
-
-[node name="SelectModulesRootTarget" type="Button" parent="."]
-margin_top = 50.0
-margin_right = 1023.0
-margin_bottom = 70.0
+margin_bottom = 52.0
 text = "Select module root"
+
+[node name="GridContainer" type="GridContainer" parent="."]
+margin_top = 56.0
+margin_right = 1023.0
+margin_bottom = 88.0
+columns = 2
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="GridContainer"]
+margin_right = 43.0
+margin_bottom = 14.0
+size_flags_vertical = 2
+text = "Name:"
+autowrap = true
+
+[node name="ModulesRootLabel" type="Label" parent="GridContainer"]
+margin_left = 47.0
+margin_right = 1023.0
+margin_bottom = 14.0
+size_flags_horizontal = 3
+size_flags_vertical = 2
+autowrap = true
+
+[node name="Label2" type="Label" parent="GridContainer"]
+margin_top = 18.0
+margin_right = 43.0
+margin_bottom = 32.0
+size_flags_vertical = 2
+text = "Status:"
+
+[node name="ModulesRootStatus" type="Label" parent="GridContainer"]
+margin_left = 47.0
+margin_top = 18.0
+margin_right = 1023.0
+margin_bottom = 32.0
+size_flags_vertical = 2
+autowrap = true
+
+[node name="HSeparator2" type="HSeparator" parent="."]
+margin_top = 92.0
+margin_right = 1023.0
+margin_bottom = 96.0
 [connection signal="pressed" from="ReloadPluginButton" to="." method="_on_ReloadPluginButton_pressed"]
 [connection signal="pressed" from="SelectModulesRootTarget" to="." method="_on_SelectModulesRootTarget_pressed"]

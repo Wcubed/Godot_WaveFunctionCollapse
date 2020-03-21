@@ -3,7 +3,7 @@ extends EditorPlugin
 
 const DOCK_NAME := "__RUNNING_WFC_DOCK"
 
-var dock
+var dock: WcfDock = null
 
 # Root node where we will place imported modules.
 var modules_root : Node = null
@@ -64,8 +64,33 @@ func _on_select_modules_root():
 	var selection := get_editor_interface().get_selection().get_selected_nodes()
 	print(selection)
 	
-	if selection.size() != 0:
-		# Use the first as the target.
-		modules_root = selection[0]
-		# Update the interface.
-		dock.set_modules_root(modules_root)
+	if selection.size() == 0:
+		# Nothing selected.
+		return
+	
+	# Use the first as the target.
+	modules_root = selection[0]
+	print(modules_root)
+	var mesh_count := list_top_level_meshes(modules_root).size()
+	
+	# Update the interface.
+	dock.set_modules_root_name(modules_root.get_name())
+	if mesh_count == 0:
+		# Can't get modules if there are no meshes.
+		dock.set_modules_root_status("No top level MeshInstances found", false)
+	elif mesh_count == 1:
+		dock.set_modules_root_status("1 MeshInstance found", true)
+	else:
+		dock.set_modules_root_status("%d MeshInstances found" % mesh_count, true)
+
+# ---- Wave function collapse related stuff ----
+
+# Takes a root node, returns all the mesh nodes that are direct children.
+func list_top_level_meshes(root: Node) -> Array:
+	var result := []
+	
+	for node in root.get_children():
+		if node.get_class() == "MeshInstance":
+			result.append(node)
+	
+	return result
