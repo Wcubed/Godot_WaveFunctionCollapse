@@ -18,6 +18,10 @@ _global_script_class_icons={
 config/name="WaveFunctionCollapseGeneration"
 config/icon="res://icon.png"
 
+[editor_plugins]
+
+enabled=PoolStringArray( "wave_fuction_collapse_plugin" )
+
 [rendering]
 
 environment/default_environment="res://default_env.tres"
