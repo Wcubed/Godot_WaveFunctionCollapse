@@ -104,6 +104,9 @@ func _on_select_modules_target():
 # Checks if the given modules source is good to go.
 # Returns an array: [ok?: bool, human_readable_result: String]
 func is_modules_source_ok(root: Node) -> Array:
+	if root == null:
+		return [false, "Node not found"]
+	
 	# Can we find ArrayMeshes?
 	var mesh_count := list_top_level_meshes(modules_source).size()
 	
@@ -119,7 +122,9 @@ func is_modules_source_ok(root: Node) -> Array:
 # Checks if the given modules targetis good to go.
 # Returns an array: [ok?: bool, human_readable_result: String]
 func is_modules_target_ok(root: Node) -> Array:
-	var mesh_count := list_top_level_meshes(modules_source).size()
+	if root == null:
+		return [false, "Node not found"]
+
 	# Is target an Spatial node with 0 children?
 	if modules_target.get_class() != "Spatial" || modules_target.get_children().size() != 0:
 		return [false, "Target should be a Spatial node with 0 children"]
