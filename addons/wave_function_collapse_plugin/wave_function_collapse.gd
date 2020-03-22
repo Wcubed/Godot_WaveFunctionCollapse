@@ -168,10 +168,10 @@ func extract_modules():
 	if !source_status[0] || !target_status[1]:
 		return
 	
-	# Dictionary of Vector3 (the module position) -> Array[Vector3] (the modules faces)
-	var modules : Dictionary = {}
-	
 	for mesh_instance in list_top_level_mesh_instances(modules_source):
+		# Dictionary of Vector3 (the module position) -> Array[Vector3] (the modules faces)
+		var modules : Dictionary = {}
+		
 		var array_mesh : ArrayMesh = mesh_instance.mesh
 		
 		# Keep track of the 3 vertexes that make up each face.
@@ -186,12 +186,12 @@ func extract_modules():
 				# Determine which module this face is in.
 				# TODO: be able to stretch multiple modules.
 				var module_index := determine_module_indexes_of_face(face)
-				print(face)
+				
 				# Normalize the vertex locations in the module.
 				for i in face.size():
 					face[i] = face[i] - module_index
-				print(face)
 				
+				# Add these vertices to the correct module.
 				if modules.has(module_index):
 					# append the new face.
 					modules[module_index] += face
@@ -199,7 +199,8 @@ func extract_modules():
 					modules[module_index] = face
 				
 				# Get ready for the next triangle.
-				face.clear()
+				# Don't use clear! as this will mess with the vectors that are now also in the modules.
+				face = []
 		
 		# Create a new mesh instance for each module.
 		for module_index in modules.keys():
@@ -222,8 +223,9 @@ func extract_modules():
 			# Add the mesh to the tree. `set_owner` needs to happen after `add_child`
 			modules_target.add_child(result_mesh_instance)
 			result_mesh_instance.set_owner(modules_target.owner)
+		
+		print("%d modules extracted from `%s`, into `%s`" % [modules.size(), mesh_instance.name, modules_target.name])
 	
-	print("%d modules extracted from `%s`, into `%s`" % [modules.size(), modules_source.name, modules_target.name])
 	# Extraction done, reset the ui.
 	dock.reset_source_and_target()
 
