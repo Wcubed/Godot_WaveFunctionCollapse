@@ -177,6 +177,8 @@ func extract_modules():
 		# Keep track of the 3 vertexes that make up each face.
 		var face : Array = []
 		
+		# Sort all the vertexes into faces.
+		# Then sort every face into the module it belongs into.
 		for vertex in array_mesh.get_faces():
 			face.append(vertex)
 			if face.size() == 3:
@@ -184,6 +186,12 @@ func extract_modules():
 				# Determine which module this face is in.
 				# TODO: be able to stretch multiple modules.
 				var module_index := determine_module_indexes_of_face(face)
+				print(face)
+				# Normalize the vertex locations in the module.
+				for i in face.size():
+					face[i] = face[i] - module_index
+				print(face)
+				
 				if modules.has(module_index):
 					# append the new face.
 					modules[module_index] += face
@@ -192,9 +200,6 @@ func extract_modules():
 				
 				# Get ready for the next triangle.
 				face.clear()
-		
-		# TODO: Add the sorted faces to surface tools for each module.
-		print(modules)
 		
 		# Create a new mesh instance for each module.
 		for module_index in modules.keys():
@@ -207,8 +212,11 @@ func extract_modules():
 			arrays[ArrayMesh.ARRAY_VERTEX] = module
 			arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 			
+			# Create the MeshInstance.
 			var result_mesh_instance := MeshInstance.new()
 			result_mesh_instance.name = "Module"
+			# Put it in the same relative location as the original module.
+			result_mesh_instance.translation = module_index
 			result_mesh_instance.mesh = arr_mesh
 			
 			# Add the mesh to the tree. `set_owner` needs to happen after `add_child`
@@ -218,11 +226,6 @@ func extract_modules():
 	print("%d modules extracted from `%s`, into `%s`" % [modules.size(), modules_source.name, modules_target.name])
 	# Extraction done, reset the ui.
 	dock.reset_source_and_target()
-
-
-# Implementation of: v1 % v2
-func vector3_modulo(v1: Vector3, v2: Vector3) -> Vector3:
-	return Vector3(fmod(v1.x, v2.x), fmod(v1.y, v2.y), fmod(v1.z, v2.z))
 
 # Takes a face and determines in which modules it is located.
 # TODO: If it stretches between two or three modules, it will return all of them.
@@ -236,7 +239,7 @@ func determine_module_indexes_of_face(face: Array) -> Vector3:
 	for i in range(0, 3):
 		# This is the module that the vertex is in, if it isn't on the edge of a module.
 		var base_module : Vector3 = (face[i] / module_size).floor()
-		var pos_in_module : Vector3 = vector3_modulo(face[i], module_size)
+		var pos_in_module : Vector3 = face[i] - base_module
 		
 		modules_per_vertex[i].append(base_module)
 		
