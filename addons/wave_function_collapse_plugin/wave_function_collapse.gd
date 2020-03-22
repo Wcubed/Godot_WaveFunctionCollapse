@@ -181,38 +181,39 @@ func extract_modules():
 			face.append(vertex)
 			if face.size() == 3:
 				# We have a triangle.
-				# Determine which modules this is in.
-				print(determine_module_indexes_of_face(face))
+				# Determine which module this face is in.
+				# TODO: be able to stretch multiple modules.
+				var module_index := determine_module_indexes_of_face(face)
+				if modules.has(module_index):
+					# append the new face.
+					modules[module_index] += face
+				else:
+					modules[module_index] = face
 				
 				# Get ready for the next triangle.
 				face.clear()
 		
 		# TODO: Add the sorted faces to surface tools for each module.
+		print(modules)
 		
-		# For now just create a triangle.
-		var st := SurfaceTool.new()
-		st.begin(Mesh.PRIMITIVE_TRIANGLES)
-		# Make it not smooth.
-		st.add_smooth_group(false)
-		
-		st.add_vertex(Vector3(1, 0, 0))
-		st.add_vertex(Vector3(0, 1, 0))
-		st.add_vertex(Vector3(0, 0, 1))
-		
-		# Generate indices (optional)
-		st.index()
-		# Calculate the normals automatically.
-		st.generate_normals()
-		
-		var result_mesh := st.commit()
-		
-		var result_mesh_instance := MeshInstance.new()
-		result_mesh_instance.name = "Module"
-		result_mesh_instance.mesh = result_mesh
-		
-		# Add the mesh to the tree. `set_owner` needs to happen after `add_child`
-		modules_target.add_child(result_mesh_instance)
-		result_mesh_instance.set_owner(modules_target.owner)
+		# Create a new mesh instance for each module.
+		for module_index in modules.keys():
+			var module : Array = modules[module_index]
+			
+			# Create an ArrayMesh from the module.
+			var arr_mesh := ArrayMesh.new()
+			var arrays := []
+			arrays.resize(ArrayMesh.ARRAY_MAX)
+			arrays[ArrayMesh.ARRAY_VERTEX] = module
+			arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			
+			var result_mesh_instance := MeshInstance.new()
+			result_mesh_instance.name = "Module"
+			result_mesh_instance.mesh = arr_mesh
+			
+			# Add the mesh to the tree. `set_owner` needs to happen after `add_child`
+			modules_target.add_child(result_mesh_instance)
+			result_mesh_instance.set_owner(modules_target.owner)
 	
 	print("%d modules extracted from `%s`, into `%s`" % [modules.size(), modules_source.name, modules_target.name])
 	# Extraction done, reset the ui.
@@ -229,7 +230,7 @@ func vector3_modulo(v1: Vector3, v2: Vector3) -> Vector3:
 # TODO: If a faces edge stretches accros more than 2 modules, the modules in-between will be ignored. So don't do this.
 # TODO: It also doesn't like a face with 1 vertex between multiple modules, and the other 2 vertices in neither of those modules. So don't do that.
 # ! This can probably be done more efficient. But I have currently no clue how.
-func determine_module_indexes_of_face(face: Array) -> Array:
+func determine_module_indexes_of_face(face: Array) -> Vector3:
 	# First, get each module that a vertex can be in.
 	var modules_per_vertex : Array = [[], [], []]
 	for i in range(0, 3):
@@ -274,5 +275,5 @@ func determine_module_indexes_of_face(face: Array) -> Array:
 			# Module is in all three vertices.
 			result.append(module)
 	
-	# Currently we don't know what to do in other cases.
-	return result
+	# todo: support faces stretching accross modules.
+	return result[0]
