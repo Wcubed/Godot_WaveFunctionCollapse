@@ -5,6 +5,5 @@
 [node name="Main" type="Spatial"]
 
 [node name="waveform_modules" parent="." instance=ExtResource( 1 )]
-transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 2.72483, 0, 0 )
 
 [node name="Spatial" type="Spatial" parent="."]

@@ -168,6 +168,21 @@ func extract_modules():
 	var extracted_modules_count := 0
 	
 	for mesh_instance in list_top_level_mesh_instances(modules_source):
+		var array_mesh : ArrayMesh = mesh_instance.mesh
+		
+		# Keep track of when we have 3 vertexes, so we can start a new face.
+		var vertex_face_count := 0
+		for vertex in array_mesh.get_faces():
+			# Is this a new face?
+			if vertex_face_count == 0:
+				print("New face")
+			print(vertex)
+			
+			# 3 vertices per face.
+			vertex_face_count += 1
+			if vertex_face_count >= 3:
+				vertex_face_count = 0
+		
 		# For now just create a triangle.
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
