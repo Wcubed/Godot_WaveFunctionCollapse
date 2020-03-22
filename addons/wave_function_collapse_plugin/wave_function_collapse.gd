@@ -10,6 +10,9 @@ var modules_source : Node = null
 # Root node we will place found modules under.
 var modules_target : Node = null
 
+# Size of each module, might be user editable later on.
+var module_size : Vector3 = Vector3(1, 1, 1)
+
 func _enter_tree():
 	print("Wave function collaps plugin loaded")
 	
@@ -165,23 +168,26 @@ func extract_modules():
 	if !source_status[0] || !target_status[1]:
 		return
 	
-	var extracted_modules_count := 0
+	# Dictionary of Vector3 (the module position) -> Array[Vector3] (the modules faces)
+	var modules : Dictionary = {}
 	
 	for mesh_instance in list_top_level_mesh_instances(modules_source):
 		var array_mesh : ArrayMesh = mesh_instance.mesh
 		
-		# Keep track of when we have 3 vertexes, so we can start a new face.
-		var vertex_face_count := 0
+		# Keep track of the 3 vertexes that make up each face.
+		var face : Array = []
+		
 		for vertex in array_mesh.get_faces():
-			# Is this a new face?
-			if vertex_face_count == 0:
-				print("New face")
-			print(vertex)
-			
-			# 3 vertices per face.
-			vertex_face_count += 1
-			if vertex_face_count >= 3:
-				vertex_face_count = 0
+			face.append(vertex)
+			if face.size() == 3:
+				# We have a triangle.
+				# Determine which modules this is in.
+				print(determine_module_indexes_of_face(face))
+				
+				# Get ready for the next triangle.
+				face.clear()
+		
+		# TODO: Add the sorted faces to surface tools for each module.
 		
 		# For now just create a triangle.
 		var st := SurfaceTool.new()
@@ -207,9 +213,66 @@ func extract_modules():
 		# Add the mesh to the tree. `set_owner` needs to happen after `add_child`
 		modules_target.add_child(result_mesh_instance)
 		result_mesh_instance.set_owner(modules_target.owner)
-		
-		extracted_modules_count += 1
 	
-	print("%d modules extracted from `%s`, into `%s`" % [extracted_modules_count, modules_source.name, modules_target.name])
+	print("%d modules extracted from `%s`, into `%s`" % [modules.size(), modules_source.name, modules_target.name])
 	# Extraction done, reset the ui.
 	dock.reset_source_and_target()
+
+
+# Implementation of: v1 % v2
+func vector3_modulo(v1: Vector3, v2: Vector3) -> Vector3:
+	return Vector3(fmod(v1.x, v2.x), fmod(v1.y, v2.y), fmod(v1.z, v2.z))
+
+# Takes a face and determines in which modules it is located.
+# TODO: If it stretches between two or three modules, it will return all of them.
+# If it sits exactly on the border of two modules, it will return both.
+# TODO: If a faces edge stretches accros more than 2 modules, the modules in-between will be ignored. So don't do this.
+# TODO: It also doesn't like a face with 1 vertex between multiple modules, and the other 2 vertices in neither of those modules. So don't do that.
+# ! This can probably be done more efficient. But I have currently no clue how.
+func determine_module_indexes_of_face(face: Array) -> Array:
+	# First, get each module that a vertex can be in.
+	var modules_per_vertex : Array = [[], [], []]
+	for i in range(0, 3):
+		# This is the module that the vertex is in, if it isn't on the edge of a module.
+		var base_module : Vector3 = (face[i] / module_size).floor()
+		var pos_in_module : Vector3 = vector3_modulo(face[i], module_size)
+		
+		modules_per_vertex[i].append(base_module)
+		
+		# Check if the vertex is on a face, edge or corner.
+		# Yes, each is a separate case, because if we are in the corner, we need to actually add 7 possible modules.
+		if pos_in_module.x == 0.0:
+			# On the x face.
+			modules_per_vertex[i].append(Vector3(base_module.x - 1, base_module.y, base_module.z))
+		if pos_in_module.y == 0.0:
+			# On the y face.
+			modules_per_vertex[i].append(Vector3(base_module.x, base_module.y - 1, base_module.z))
+		if pos_in_module.z == 0.0:
+			# On the z face.
+			modules_per_vertex[i].append(Vector3(base_module.x, base_module.y, base_module.z - 1))
+		
+		if pos_in_module.x == 0.0 && pos_in_module.y == 0.0:
+			# On the xy edge.
+			modules_per_vertex[i].append(Vector3(base_module.x - 1, base_module.y - 1, base_module.z))
+		if pos_in_module.y == 0.0 && pos_in_module.z == 0.0:
+			# On the yz edge.
+			modules_per_vertex[i].append(Vector3(base_module.x, base_module.y - 1, base_module.z - 1))
+		if pos_in_module.z == 0.0 && pos_in_module.x == 0.0:
+			# On the zx edge.
+			modules_per_vertex[i].append(Vector3(base_module.x - 1, base_module.y, base_module.z - 1))
+		
+		if pos_in_module == Vector3(0, 0, 0):
+			# In the xyz corner.
+			modules_per_vertex[i].append(Vector3(base_module.x - 1, base_module.y - 1, base_module.z - 1))
+	
+	var result : Array = []
+	# For now, we ignore the cases where the face can be in multiple modules at once.
+	# TODO: implement those cases as well.
+	for module in modules_per_vertex[0]:
+		# See if this module is in both other vertices
+		if modules_per_vertex[1].find(module) != -1 && modules_per_vertex[2].find(module) != -1:
+			# Module is in all three vertices.
+			result.append(module)
+	
+	# Currently we don't know what to do in other cases.
+	return result
