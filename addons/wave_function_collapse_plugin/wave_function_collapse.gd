@@ -176,42 +176,71 @@ func extract_modules():
 		
 		# Keep track of the 3 vertexes that make up each face.
 		var face : Array = []
+		# We need to fit all the different parameters in this array, not only the vertex coordinates.
+		# We use everything up to the bones, so not the bones or the bone weights.
+		for i in range(0, ArrayMesh.ARRAY_MAX):
+			face.append([])
 		
+		# Go through all the surfaces.
 		# Sort all the vertexes into faces.
 		# Then sort every face into the module it belongs into.
-		for vertex in array_mesh.get_faces():
-			face.append(vertex)
-			if face.size() == 3:
-				# We have a triangle.
-				# Determine which module this face is in.
-				# TODO: be able to stretch multiple modules.
-				var module_index := determine_module_indexes_of_face(face)
+		# This algorithm assumes the ArrayMesh is using an ARRAY_INDEX array.
+		for surface_idx in range(0, array_mesh.get_surface_count()):
+			print(surface_idx)
+			# Get the arrays of this surface.
+			var surface_arrays := array_mesh.surface_get_arrays(surface_idx)
+			print(surface_arrays)
+			
+			for vertex_idx in range(0, surface_arrays[ArrayMesh.ARRAY_VERTEX].size()):
+				# Get all the different parameters for this vertex.
+				# We copy up to ARRAY_BONES, because the bones and bone weights are not immediately on a per-vertex basis.
+				for i in range(0, ArrayMesh.ARRAY_BONES):
+					# Some of the parameters might not be there, ignore those.
+					if surface_arrays[i]:
+						if not surface_arrays[i].empty():
+							if i == ArrayMesh.ARRAY_TANGENT || i == ArrayMesh.ARRAY_BONES || i == ArrayMesh.ARRAY_WEIGHTS:
+								# These parameters have 4 items per vertex.
+								for j in range(0, 4):
+									face[i].append(surface_arrays[i][(vertex_idx * 4) + j])
+							else:
+								# The rest of the parameters have 1 item per vertex.
+								face[i].append(surface_arrays[i][vertex_idx])
 				
-				# Normalize the vertex locations in the module.
-				for i in face.size():
-					face[i] = face[i] - module_index
-				
-				# Add these vertices to the correct module.
-				if modules.has(module_index):
-					# append the new face.
-					modules[module_index] += face
-				else:
-					modules[module_index] = face
-				
-				# Get ready for the next triangle.
-				# Don't use clear! as this will mess with the vectors that are now also in the modules.
-				face = []
+				print(face)
+				# Check if we have enough vertices for a triangle.
+				if face[ArrayMesh.ARRAY_VERTEX].size() == 3:
+					# We have a triangle.
+					# Determine which module this face is in.
+					# TODO: be able to stretch multiple modules.
+					var module_index := determine_module_indexes_of_face(face)
+					
+					# Normalize the vertex locations in the module.
+					for i in face[ArrayMesh.ARRAY_VERTEX].size():
+						face[ArrayMesh.ARRAY_VERTEX][i] = face[ArrayMesh.ARRAY_VERTEX][i] - module_index
+					
+					# Add these vertices to the correct module.
+					if modules.has(module_index):
+						# append the new face.
+						modules[module_index] += face
+					else:
+						modules[module_index] = face
+					
+					# Get ready for the next triangle.
+					# Don't use clear! as this will mess with the vertices that are now also in the modules.
+					face = []
+					for i in range(0, ArrayMesh.ARRAY_MAX):
+						face.append([])
+		
+		print("modules")
 		
 		# Create a new mesh instance for each module.
 		for module_index in modules.keys():
 			var module : Array = modules[module_index]
+			print(module)
 			
 			# Create an ArrayMesh from the module.
 			var arr_mesh := ArrayMesh.new()
-			var arrays := []
-			arrays.resize(ArrayMesh.ARRAY_MAX)
-			arrays[ArrayMesh.ARRAY_VERTEX] = module
-			arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+			arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, module)
 			
 			# Create the MeshInstance.
 			var result_mesh_instance := MeshInstance.new()
@@ -229,7 +258,9 @@ func extract_modules():
 	# Extraction done, reset the ui.
 	dock.reset_source_and_target()
 
-# Takes a face and determines in which modules it is located.
+# Takes a 3 vertex face and determines in which modules it is located.
+# The face is an Array of length ArrayMesh.ARRAY_MAX, representing all the parameters of the 3 vertices.
+# because those are not on a per-vertex basis.
 # TODO: If it stretches between two or three modules, it will return all of them.
 # If it sits exactly on the border of two modules, it will return both.
 # TODO: If a faces edge stretches accros more than 2 modules, the modules in-between will be ignored. So don't do this.
@@ -240,13 +271,13 @@ func determine_module_indexes_of_face(face: Array) -> Vector3:
 	var modules_per_vertex : Array = [[], [], []]
 	for i in range(0, 3):
 		# This is the module that the vertex is in, if it isn't on the edge of a module.
-		var base_module : Vector3 = (face[i] / module_size).floor()
-		var pos_in_module : Vector3 = face[i] - base_module
+		var base_module : Vector3 = (face[ArrayMesh.ARRAY_VERTEX][i] / module_size).floor()
+		var pos_in_module : Vector3 = face[ArrayMesh.ARRAY_VERTEX][i] - base_module
 		
 		modules_per_vertex[i].append(base_module)
-		
+	
 		# Check if the vertex is on a face, edge or corner.
-		# Yes, each is a separate case, because if we are in the corner, we need to actually add 7 possible modules.
+		# Yes, each is a separate "if" statement, and not an "elif", because if we are in the corner, we need to actually add 7 possible modules.
 		if pos_in_module.x == 0.0:
 			# On the x face.
 			modules_per_vertex[i].append(Vector3(base_module.x - 1, base_module.y, base_module.z))
@@ -279,6 +310,13 @@ func determine_module_indexes_of_face(face: Array) -> Vector3:
 		if modules_per_vertex[1].find(module) != -1 && modules_per_vertex[2].find(module) != -1:
 			# Module is in all three vertices.
 			result.append(module)
+	
+	if result.empty():
+		# Ooh, there is no common module between all 3 vertices.
+		# This means we are a module-spanning face.
+		# TODO: find out exactly which modules.
+		print("Can't find common modules in all 3 vertices. This is one for the TODO list.")
+		return Vector3(0, 0, 0)
 	
 	# todo: support faces stretching accross modules.
 	return result[0]
