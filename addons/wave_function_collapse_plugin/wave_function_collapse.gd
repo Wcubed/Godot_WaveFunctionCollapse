@@ -175,9 +175,8 @@ func extract_modules():
 		var array_mesh : ArrayMesh = mesh_instance.mesh
 		
 		# Keep track of the 3 vertexes that make up each face.
-		var face : Array = []
 		# We need to fit all the different parameters in this array, not only the vertex coordinates.
-		# We use everything up to the bones, so not the bones or the bone weights.
+		var face : Array = []
 		for i in range(0, ArrayMesh.ARRAY_MAX):
 			face.append([])
 		
@@ -186,15 +185,14 @@ func extract_modules():
 		# Then sort every face into the module it belongs into.
 		# This algorithm assumes the ArrayMesh is using an ARRAY_INDEX array.
 		for surface_idx in range(0, array_mesh.get_surface_count()):
-			print(surface_idx)
 			# Get the arrays of this surface.
 			var surface_arrays := array_mesh.surface_get_arrays(surface_idx)
-			print(surface_arrays)
 			
-			for vertex_idx in range(0, surface_arrays[ArrayMesh.ARRAY_VERTEX].size()):
-				# Get all the different parameters for this vertex.
-				# We copy up to ARRAY_BONES, because the bones and bone weights are not immediately on a per-vertex basis.
-				for i in range(0, ArrayMesh.ARRAY_BONES):
+			# Go through all the vertices in the order indicated by the index array.
+			for vertex_idx in surface_arrays[ArrayMesh.ARRAY_INDEX]:
+				# Get all the different parameters for this vertex. Except the vertex_index.
+				# The index is the last array in the list of arrays. Hence, the `size()-1`.
+				for i in range(0, face.size()-1):
 					# Some of the parameters might not be there, ignore those.
 					if surface_arrays[i]:
 						if not surface_arrays[i].empty():
@@ -206,13 +204,12 @@ func extract_modules():
 								# The rest of the parameters have 1 item per vertex.
 								face[i].append(surface_arrays[i][vertex_idx])
 				
-				print(face)
 				# Check if we have enough vertices for a triangle.
 				if face[ArrayMesh.ARRAY_VERTEX].size() == 3:
 					# We have a triangle.
 					# Determine which module this face is in.
 					# TODO: be able to stretch multiple modules.
-					var module_index := determine_module_indexes_of_face(face)
+					var module_index := determine_module_indexes_of_face(face[ArrayMesh.ARRAY_VERTEX])
 					
 					# Normalize the vertex locations in the module.
 					for i in face[ArrayMesh.ARRAY_VERTEX].size():
@@ -221,7 +218,8 @@ func extract_modules():
 					# Add these vertices to the correct module.
 					if modules.has(module_index):
 						# append the new face.
-						modules[module_index] += face
+						for i in range(0, ArrayMesh.ARRAY_MAX):
+							modules[module_index][i] += face[i]
 					else:
 						modules[module_index] = face
 					
@@ -231,12 +229,10 @@ func extract_modules():
 					for i in range(0, ArrayMesh.ARRAY_MAX):
 						face.append([])
 		
-		print("modules")
-		
 		# Create a new mesh instance for each module.
 		for module_index in modules.keys():
-			var module : Array = modules[module_index]
-			print(module)
+			# Turn the module array into something that the ArrayMesh will accept as input.
+			var module : Array = array_mesh_input_from_generic_array(modules[module_index])
 			
 			# Create an ArrayMesh from the module.
 			var arr_mesh := ArrayMesh.new()
@@ -259,20 +255,19 @@ func extract_modules():
 	dock.reset_source_and_target()
 
 # Takes a 3 vertex face and determines in which modules it is located.
-# The face is an Array of length ArrayMesh.ARRAY_MAX, representing all the parameters of the 3 vertices.
-# because those are not on a per-vertex basis.
+# The face is an Array of 3 Vector3s, representing the 3 vertices of the face.
 # TODO: If it stretches between two or three modules, it will return all of them.
 # If it sits exactly on the border of two modules, it will return both.
 # TODO: If a faces edge stretches accros more than 2 modules, the modules in-between will be ignored. So don't do this.
 # TODO: It also doesn't like a face with 1 vertex between multiple modules, and the other 2 vertices in neither of those modules. So don't do that.
 # ! This can probably be done more efficient. But I have currently no clue how.
-func determine_module_indexes_of_face(face: Array) -> Vector3:
+func determine_module_indexes_of_face(face_vertices: Array) -> Vector3:
 	# First, get each module that a vertex can be in.
 	var modules_per_vertex : Array = [[], [], []]
 	for i in range(0, 3):
 		# This is the module that the vertex is in, if it isn't on the edge of a module.
-		var base_module : Vector3 = (face[ArrayMesh.ARRAY_VERTEX][i] / module_size).floor()
-		var pos_in_module : Vector3 = face[ArrayMesh.ARRAY_VERTEX][i] - base_module
+		var base_module : Vector3 = (face_vertices[i] / module_size).floor()
+		var pos_in_module : Vector3 = face_vertices[i] - base_module
 		
 		modules_per_vertex[i].append(base_module)
 	
@@ -320,3 +315,30 @@ func determine_module_indexes_of_face(face: Array) -> Vector3:
 	
 	# todo: support faces stretching accross modules.
 	return result[0]
+
+# Converts an [Array of generic Arras] of length ArrayMesh.ARRAY_MAX into something that will be accepted by the ArrayMesh.
+func array_mesh_input_from_generic_array(array: Array) -> Array:
+	if array.size() < ArrayMesh.ARRAY_MAX:
+		# Not enough info, can't do anything logical here.
+		return []
+	
+	var result : Array = []
+	result.resize(ArrayMesh.ARRAY_MAX)
+	
+	# Only fill the index if there is data. Otherwise we need to leave it null.
+	for i in range(0, ArrayMesh.ARRAY_MAX):
+		if !array[i].empty():
+			# there are different types of data in each slot.
+			# See the ArrayMesh documentation on why the array looks like this.
+			if i == ArrayMesh.ARRAY_VERTEX || i == ArrayMesh.ARRAY_NORMAL:
+				result[i] = PoolVector3Array(array[i])
+			elif i == ArrayMesh.ARRAY_TANGENT || i == ArrayMesh.ARRAY_BONES || i == ArrayMesh.ARRAY_WEIGHTS:
+				result[i] = PoolRealArray(array[i])
+			elif i == ArrayMesh.ARRAY_COLOR:
+				result[i] = PoolColorArray(array[i])
+			elif i == ArrayMesh.ARRAY_TEX_UV || i == ArrayMesh.ARRAY_TEX_UV2:
+				result[i] = PoolVector2Array(array[i])
+			elif i == ArrayMesh.ARRAY_INDEx:
+				result[i] = PoolIntArray(array[i])
+	return result
+
