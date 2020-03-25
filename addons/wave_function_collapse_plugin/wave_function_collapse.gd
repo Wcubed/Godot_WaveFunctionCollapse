@@ -10,8 +10,17 @@ var modules_source : Node = null
 # Root node we will place found modules under.
 var modules_target : Node = null
 
-# Size of each module, might be user editable later on.
-var module_size : Vector3 = Vector3(1, 1, 1)
+# Size of each grid cell, might be user editable later on.
+var cell_size : Vector3 = Vector3(1, 1, 1)
+
+# ---- Terminoligy ----
+# Grid: the x by y by z space that everything happens on.
+# Cell: one piece of the grid `cell_size` large.
+# Module: A puzzle piece that occupies into one or multiple cells.
+#         These are the pieces used to generate the final construction.
+# Slot: A cell on the grid which can house a module.
+#       This is where the modules are placed into during generation.
+#       A module that occupies multiple cells will fill that many slots.
 
 func _enter_tree():
 	print("Wave function collaps plugin loaded")
@@ -169,8 +178,8 @@ func extract_modules():
 		return
 	
 	for mesh_instance in list_top_level_mesh_instances(modules_source):
-		# Dictionary of Vector3 (the module position) -> Array[Vector3] (the modules faces)
-		var modules : Dictionary = {}
+		# Dictionary of Vector3 (the cell position) -> Array[Vector3] (the cells faces)
+		var cells : Dictionary = {}
 		
 		var array_mesh : ArrayMesh = mesh_instance.mesh
 		
@@ -207,32 +216,33 @@ func extract_modules():
 				# Check if we have enough vertices for a triangle.
 				if face[ArrayMesh.ARRAY_VERTEX].size() == 3:
 					# We have a triangle.
-					# Determine which module this face is in.
-					# TODO: be able to stretch multiple modules.
-					var module_index := determine_module_indexes_of_face(face[ArrayMesh.ARRAY_VERTEX])
+					# Determine which cell this face is in.
+					# TODO: be able to stretch multiple cells.
+					var module_index := determine_grid_cell_indexes_of_face(face[ArrayMesh.ARRAY_VERTEX])
 					
-					# Normalize the vertex locations in the module.
+					# Normalize the vertex locations in the cell.
 					for i in face[ArrayMesh.ARRAY_VERTEX].size():
 						face[ArrayMesh.ARRAY_VERTEX][i] = face[ArrayMesh.ARRAY_VERTEX][i] - module_index
 					
-					# Add these vertices to the correct module.
-					if modules.has(module_index):
+					# Add these vertices to the correct cell.
+					if cells.has(module_index):
 						# append the new face.
 						for i in range(0, ArrayMesh.ARRAY_MAX):
-							modules[module_index][i] += face[i]
+							cells[module_index][i] += face[i]
 					else:
-						modules[module_index] = face
+						cells[module_index] = face
 					
 					# Get ready for the next triangle.
-					# Don't use clear! as this will mess with the vertices that are now also in the modules.
+					# Don't use clear! as this will mess with the vertices that are now also in the cells.
 					face = []
 					for i in range(0, ArrayMesh.ARRAY_MAX):
 						face.append([])
 		
 		# Create a new mesh instance for each module.
-		for module_index in modules.keys():
+		# TODO: have modules stretch across multiple cells
+		for module_index in cells.keys():
 			# Turn the module array into something that the ArrayMesh will accept as input.
-			var module : Array = array_mesh_input_from_generic_array(modules[module_index])
+			var module : Array = array_mesh_input_from_generic_array(cells[module_index])
 			
 			# Create an ArrayMesh from the module.
 			var arr_mesh := ArrayMesh.new()
@@ -249,60 +259,60 @@ func extract_modules():
 			modules_target.add_child(result_mesh_instance)
 			result_mesh_instance.set_owner(modules_target.owner)
 		
-		print("%d modules extracted from `%s`, into `%s`" % [modules.size(), mesh_instance.name, modules_target.name])
+		print("%d modules extracted from `%s`, into `%s`" % [cells.size(), mesh_instance.name, modules_target.name])
 	
 	# Extraction done, reset the ui.
 	dock.reset_source_and_target()
 
-# Takes a 3 vertex face and determines in which modules it is located.
+# Takes a 3 vertex face and determines in which grid cell it is located.
 # The face is an Array of 3 Vector3s, representing the 3 vertices of the face.
-# TODO: If it stretches between two or three modules, it will return all of them.
-# If it sits exactly on the border of two modules, it will return both.
-# TODO: If a faces edge stretches accros more than 2 modules, the modules in-between will be ignored. So don't do this.
-# TODO: It also doesn't like a face with 1 vertex between multiple modules, and the other 2 vertices in neither of those modules. So don't do that.
+# TODO: If it stretches between two or three grid cells, it will return all of them.
+# If it sits exactly on the border of two grid cells, it will return both.
+# TODO: If a faces edge stretches accros more than 2 grid cells, the grid cells in-between will be ignored. So don't do this.
+# TODO: If it can't decisively say which grid cells a face belongs to, it will return all of them.
 # ! This can probably be done more efficient. But I have currently no clue how.
-func determine_module_indexes_of_face(face_vertices: Array) -> Vector3:
-	# First, get each module that a vertex can be in.
-	var modules_per_vertex : Array = [[], [], []]
+func determine_grid_cell_indexes_of_face(face_vertices: Array) -> Vector3:
+	# First, we will find each grid cell that each vertex touches.
+	var cells_per_vertex : Array = [[], [], []]
 	for i in range(0, 3):
-		# This is the module that the vertex is in, if it isn't on the edge of a module.
-		var base_module : Vector3 = (face_vertices[i] / module_size).floor()
-		var pos_in_module : Vector3 = face_vertices[i] - base_module
+		# This is the cell that the vertex is in, if it isn't on the edge of a cell.
+		var base_cell : Vector3 = (face_vertices[i] / cell_size).floor()
+		var pos_in_cell : Vector3 = face_vertices[i] - base_cell
 		
-		modules_per_vertex[i].append(base_module)
+		cells_per_vertex[i].append(base_cell)
 	
 		# Check if the vertex is on a face, edge or corner.
 		# Yes, each is a separate "if" statement, and not an "elif", because if we are in the corner, we need to actually add 7 possible modules.
-		if pos_in_module.x == 0.0:
+		if pos_in_cell.x == 0.0:
 			# On the x face.
-			modules_per_vertex[i].append(Vector3(base_module.x - 1, base_module.y, base_module.z))
-		if pos_in_module.y == 0.0:
+			cells_per_vertex[i].append(Vector3(base_cell.x - 1, base_cell.y, base_cell.z))
+		if pos_in_cell.y == 0.0:
 			# On the y face.
-			modules_per_vertex[i].append(Vector3(base_module.x, base_module.y - 1, base_module.z))
-		if pos_in_module.z == 0.0:
+			cells_per_vertex[i].append(Vector3(base_cell.x, base_cell.y - 1, base_cell.z))
+		if pos_in_cell.z == 0.0:
 			# On the z face.
-			modules_per_vertex[i].append(Vector3(base_module.x, base_module.y, base_module.z - 1))
+			cells_per_vertex[i].append(Vector3(base_cell.x, base_cell.y, base_cell.z - 1))
 		
-		if pos_in_module.x == 0.0 && pos_in_module.y == 0.0:
+		if pos_in_cell.x == 0.0 && pos_in_cell.y == 0.0:
 			# On the xy edge.
-			modules_per_vertex[i].append(Vector3(base_module.x - 1, base_module.y - 1, base_module.z))
-		if pos_in_module.y == 0.0 && pos_in_module.z == 0.0:
+			cells_per_vertex[i].append(Vector3(base_cell.x - 1, base_cell.y - 1, base_cell.z))
+		if pos_in_cell.y == 0.0 && pos_in_cell.z == 0.0:
 			# On the yz edge.
-			modules_per_vertex[i].append(Vector3(base_module.x, base_module.y - 1, base_module.z - 1))
-		if pos_in_module.z == 0.0 && pos_in_module.x == 0.0:
+			cells_per_vertex[i].append(Vector3(base_cell.x, base_cell.y - 1, base_cell.z - 1))
+		if pos_in_cell.z == 0.0 && pos_in_cell.x == 0.0:
 			# On the zx edge.
-			modules_per_vertex[i].append(Vector3(base_module.x - 1, base_module.y, base_module.z - 1))
+			cells_per_vertex[i].append(Vector3(base_cell.x - 1, base_cell.y, base_cell.z - 1))
 		
-		if pos_in_module == Vector3(0, 0, 0):
+		if pos_in_cell == Vector3(0, 0, 0):
 			# In the xyz corner.
-			modules_per_vertex[i].append(Vector3(base_module.x - 1, base_module.y - 1, base_module.z - 1))
+			cells_per_vertex[i].append(Vector3(base_cell.x - 1, base_cell.y - 1, base_cell.z - 1))
 	
 	var result : Array = []
 	# For now, we ignore the cases where the face can be in multiple modules at once.
 	# TODO: implement those cases as well.
-	for module in modules_per_vertex[0]:
+	for module in cells_per_vertex[0]:
 		# See if this module is in both other vertices
-		if modules_per_vertex[1].find(module) != -1 && modules_per_vertex[2].find(module) != -1:
+		if cells_per_vertex[1].find(module) != -1 && cells_per_vertex[2].find(module) != -1:
 			# Module is in all three vertices.
 			result.append(module)
 	
