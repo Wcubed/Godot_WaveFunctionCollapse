@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+<asset>
+	<contributor>
+		<author>Anonymous</author>
+		<authoring_tool>Collada Exporter for Blender 2.6+, by Juan Linietsky (juan@codenix.com)</authoring_tool>
+	</contributor>
+	<created>2020-03-25T18:48:37Z</created>
+	<modified>2020-03-25T18:48:37Z</modified>
+	<unit meter="1.0" name="meter"/>
+	<up_axis>Z_UP</up_axis>
+</asset>
+<library_geometries>
+	<geometry id="id-mesh-2" name="Plane.002">
+		<mesh>
+			<source id="id-mesh-2-positions">
+				<float_array id="id-mesh-2-positions-array" count="30"> -1.0000001192092896 1.0 0.20000000298023224 -1.1920928955078125e-07 2.0 0.20000000298023224 -1.0000001192092896 2.0 0.20000000298023224 -1.0 0.0 0.20000000298023224 -0.5000000596046448 0.5999999046325684 0.20000000298023224 -5.960464477539063e-08 0.0 0.20000000298023224 -1.1920928955078125e-07 2.0 0.20000000298023224 -0.5000000596046448 0.5999999046325684 0.20000000298023224 -5.960464477539063e-08 1.0 0.20000000298023224 -5.960464477539063e-08 1.0 0.20000000298023224</float_array>
+				<technique_common>
+				<accessor source="#id-mesh-2-positions-array" count="10" stride="3">
+					<param name="X" type="float"/>
+					<param name="Y" type="float"/>
+					<param name="Z" type="float"/>
+				</accessor>
+				</technique_common>
+			</source>
+			<source id="id-mesh-2-normals">
+				<float_array id="id-mesh-2-normals-array" count="30"> 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 2.9802322387695312e-08 0.0 1.0 2.9802322387695312e-08 0.0 1.0 2.9802322387695312e-08 0.0 1.0 0.0 0.0 1.0</float_array>
+				<technique_common>
+				<accessor source="#id-mesh-2-normals-array" count="10" stride="3">
+					<param name="X" type="float"/>
+					<param name="Y" type="float"/>
+					<param name="Z" type="float"/>
+				</accessor>
+				</technique_common>
+			</source>
+			<source id="id-mesh-2-tangents">
+				<float_array id="id-mesh-2-tangents-array" count="30"> 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0 1.0 0.0 0.0</float_array>
+				<technique_common>
+				<accessor source="#id-mesh-2-tangents-array" count="10" stride="3">
+					<param name="X" type="float"/>
+					<param name="Y" type="float"/>
+					<param name="Z" type="float"/>
+				</accessor>
+				</technique_common>
+			</source>
+			<source id="id-mesh-2-bitangents">
+				<float_array id="id-mesh-2-bitangents-array" count="30"> -0.0 -1.0 -0.0 -0.0 -1.0 -0.0 -0.0 -1.0 -0.0 -0.0 -1.0 -0.0 -0.0 -1.0 -0.0 -0.0 -1.0 -0.0 -0.0 -1.0 -0.0 -0.0 -1.0 -0.0 -0.0 -1.0 -0.0 -0.0 -1.0 -0.0</float_array>
+				<technique_common>
+				<accessor source="#id-mesh-2-bitangents-array" count="10" stride="3">
+					<param name="X" type="float"/>
+					<param name="Y" type="float"/>
+					<param name="Z" type="float"/>
+				</accessor>
+				</technique_common>
+			</source>
+			<source id="id-mesh-2-texcoord-0">
+				<float_array id="id-mesh-2-texcoord-0-array" count="20"> 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0</float_array>
+				<technique_common>
+				<accessor source="#id-mesh-2-texcoord-0-array" count="10" stride="2">
+					<param name="S" type="float"/>
+					<param name="T" type="float"/>
+				</accessor>
+				</technique_common>
+			</source>
+			<vertices id="id-mesh-2-vertices">
+				<input semantic="POSITION" source="#id-mesh-2-positions"/>
+			</vertices>
+			<triangles count="6">
+				<input semantic="VERTEX" source="#id-mesh-2-vertices" offset="0"/>
+				<input semantic="NORMAL" source="#id-mesh-2-normals" offset="0"/>
+				<input semantic="TEXCOORD" source="#id-mesh-2-texcoord-0" offset="0" set="0"/>
+				<input semantic="TEXTANGENT" source="#id-mesh-2-tangents" offset="0"/>
+				<input semantic="TEXBINORMAL" source="#id-mesh-2-bitangents" offset="0"/>
+				<p> 0 1 2 3 4 0 5 4 3 6 7 8 0 4 1 5 9 4 </p>
+			</triangles>
+		</mesh>
+	</geometry>
+</library_geometries>
+<library_visual_scenes>
+	<visual_scene id="id-scene-1" name="scene">
+		<node id="simple_multi_cell_module" name="simple_multi_cell_module" type="NODE">
+			<matrix sid="transform"> 1.0 0.0 0.0 -4.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 1.0  </matrix>
+			<instance_geometry url="#id-mesh-2">
+			</instance_geometry>
+		</node>
+	</visual_scene>
+</library_visual_scenes>
+<library_animations>
+</library_animations>
+<scene>
+	<instance_visual_scene url="#id-scene-1" />
+</scene>
+</COLLADA>

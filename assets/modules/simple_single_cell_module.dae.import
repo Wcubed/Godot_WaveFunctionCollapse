@@ -2,12 +2,12 @@
 
 importer="scene"
 type="PackedScene"
-path="res://.import/waveform_modules_simple.dae-98ec973421ec5f5f6aca934a2009b03f.scn"
+path="res://.import/simple_single_cell_module.dae-ed6b663cc979334c7fce1c8e0ae59610.scn"
 
 [deps]
 
-source_file="res://assets/objects/waveform_modules_simple.dae"
-dest_files=[ "res://.import/waveform_modules_simple.dae-98ec973421ec5f5f6aca934a2009b03f.scn" ]
+source_file="res://assets/modules/simple_single_cell_module.dae"
+dest_files=[ "res://.import/simple_single_cell_module.dae-ed6b663cc979334c7fce1c8e0ae59610.scn" ]
 
 [params]
 
