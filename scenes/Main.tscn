@@ -7,7 +7,7 @@
 
 [node name="Main" type="Spatial"]
 
-[node name="Spatial" type="Spatial" parent="."]
+[node name="emtpy_spatial" type="Spatial" parent="."]
 
 [node name="single_cell_modules" parent="." instance=ExtResource( 1 )]
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 0 )

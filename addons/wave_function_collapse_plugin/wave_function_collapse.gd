@@ -16,6 +16,8 @@ var modules_target : Node = null
 # Size of each grid cell, might be user editable later on.
 var cell_size : Vector3 = Vector3(1, 1, 1)
 
+var module_scene : PackedScene = preload("./module.tscn")
+
 # ---- Terminoligy ----
 # Grid: the x by y by z space that everything happens on.
 # Cell: one piece of the grid `cell_size` large.
@@ -317,7 +319,7 @@ func extract_modules():
 				# So it is it's own module.
 				modules[cell_index] = cells[cell_index]
 		
-		# Create a new mesh instance for each module.
+		# Create a new module instance for each module.
 		for module_index in modules.keys():
 			# Turn the module array into something that the ArrayMesh will accept as input.
 			var module : Array = array_mesh_input_from_generic_array(modules[module_index])
@@ -326,16 +328,23 @@ func extract_modules():
 			var arr_mesh := ArrayMesh.new()
 			arr_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, module)
 			
-			# Create the MeshInstance.
-			var result_mesh_instance := MeshInstance.new()
-			result_mesh_instance.name = "Module"
+			# Create the Module scene.
+			var module_node := module_scene.instance()
+			module_node.name = "Module"
 			# Put it in the same relative location as the original module.
-			result_mesh_instance.translation = module_index
-			result_mesh_instance.mesh = arr_mesh
+			module_node.translation = module_index
 			
-			# Add the mesh to the tree. `set_owner` needs to happen after `add_child`
-			modules_target.add_child(result_mesh_instance)
-			result_mesh_instance.set_owner(modules_target.owner)
+			var module_cells := [module_index]
+			# Are there connected cells?
+			if connected_cells.has(module_index):
+				module_cells += connected_cells[module_index]
+			
+			# Add the Module to the tree. `set_owner` needs to happen after `add_child`
+			modules_target.add_child(module_node)
+			module_node.set_owner(modules_target.owner)
+			
+			# Initialize the Module with the required data.
+			module_node.init(cell_size, module_cells, arr_mesh)
 		
 		print("%d modules extracted from `%s`, into `%s`" % [modules.size(), mesh_instance.name, modules_target.name])
 	
