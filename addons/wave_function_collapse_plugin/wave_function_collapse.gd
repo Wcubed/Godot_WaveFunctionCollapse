@@ -182,9 +182,16 @@ func extract_modules():
 	if !source_status[0] || !target_status[1]:
 		return
 	
+	# Go through all the mesh instances we can find.
 	for mesh_instance in list_top_level_mesh_instances(modules_source):
-		# Dictionary of Vector3 (the cell position) -> Array[Vector3] (the cells faces)
+		# Dictionary mapping cell_coordinate (Vector3) to ArrayMesh data.
+		# Dictionary(key: Vector3, Value: Array["length of ArrayMesh arrays (ArrayMesh.ARRAY_MAX)"])
+		# Each face is only in one of the cells here. They have to be assembled into modules using the `connected_cells` dictionary.
 		var cells : Dictionary = {}
+		# When a face overlaps two cells those cells connect to form a larger module.
+		# This maps cell coordinates (Vector3) to the coordinates of all the cells they overlap with (Vector3).
+		# If a cell has no overlapping faces with other cells, it won't be in here.
+		var connected_cells : Dictionary = {}
 		
 		var array_mesh : ArrayMesh = mesh_instance.mesh
 		
@@ -221,33 +228,99 @@ func extract_modules():
 				# Check if we have enough vertices for a triangle.
 				if face[ArrayMesh.ARRAY_VERTEX].size() == 3:
 					# We have a triangle.
-					# Determine which cell this face is in.
-					# TODO: be able to stretch multiple cells.
-					var module_index : Vector3 = determine_grid_cell_indexes_of_face(face[ArrayMesh.ARRAY_VERTEX])[0]
+					# Determine which cells this face is in.
+					var face_cells : Array = determine_grid_cell_indexes_of_face(face[ArrayMesh.ARRAY_VERTEX])
 					
-					# Normalize the vertex locations in the cell.
-					for i in face[ArrayMesh.ARRAY_VERTEX].size():
-						face[ArrayMesh.ARRAY_VERTEX][i] = face[ArrayMesh.ARRAY_VERTEX][i] - module_index
-					
-					# Add these vertices to the correct cell.
-					if cells.has(module_index):
-						# append the new face.
-						for i in range(0, ArrayMesh.ARRAY_MAX):
-							cells[module_index][i] += face[i]
-					else:
-						cells[module_index] = face
-					
+					# If there are no cells listed, the face is exactly on the edge of cells and we ignore it.
+					if !face_cells.empty():
+						# We only want to add the vertices to one cell, so it is easier to assemble the modules later.
+						var primary_cell_index : Vector3 = face_cells[0]
+						
+						# Normalize the vertex locations in the cell.
+						for i in face[ArrayMesh.ARRAY_VERTEX].size():
+							face[ArrayMesh.ARRAY_VERTEX][i] = face[ArrayMesh.ARRAY_VERTEX][i] - primary_cell_index
+						
+						# Add these vertices to the correct cell.
+						if cells.has(primary_cell_index):
+							# append the new face.
+							for i in range(0, ArrayMesh.ARRAY_MAX):
+								cells[primary_cell_index][i] += face[i]
+						else:
+							cells[primary_cell_index] = face
+						
+						# Is this cell connected to other cells?
+						if face_cells.size() > 1:
+							# We link the connection both ways.
+							# so cell -> Other_cell and other_cell -> cell
+							for i in range(0, face_cells.size()):
+								var cell : Vector3 = face_cells[i]
+								for j in range(i + 1, face_cells.size()):
+									var other_cell : Vector3 = face_cells[j]
+									
+									# Add the connection cell -> other_cell.
+									if connected_cells.has(cell):
+										# Only add the connection once.
+										if connected_cells[cell].find(other_cell) == -1:
+											connected_cells[cell].append(other_cell)
+									else:
+										connected_cells[cell] = [other_cell]
+									
+									# Add the connection other_cell -> cell
+									if connected_cells.has(other_cell):
+										# Only add the connection once.
+										if connected_cells[other_cell].find(cell) == -1:
+											connected_cells[other_cell].append(cell)
+									else:
+										connected_cells[other_cell] = [cell]
+							
 					# Get ready for the next triangle.
 					# Don't use clear! as this will mess with the vertices that are now also in the cells.
 					face = []
 					for i in range(0, ArrayMesh.ARRAY_MAX):
 						face.append([])
 		
+		# We now know in which cell each surface is, and which surfaces are connected.
+		# Now we need to assemble each set of connected cells into a coherent module.
+		
+		# Dictionary of cell indexes to ArrayMesh arrays.
+		# The cell index in here is the main cell index of that module.
+		# Which cells this module is also in can be found in `connected_modules`.
+		var modules : Dictionary = {}
+		for cell_index in cells.keys():
+			if connected_cells.has(cell_index):
+				# This is a connected cell.
+				# Check if one of the connections is already in the module dictionary.
+				var added_to_other := false
+				for other_index in connected_cells[cell_index]:
+					if modules.has(other_index):
+						added_to_other = true
+						# One of our connections is already in the list. We append all our arrays to that.
+						for i in range(0, ArrayMesh.ARRAY_MAX):
+							var array : Array = cells[cell_index][i]
+							
+							if i == ArrayMesh.ARRAY_VERTEX:
+								# If we are adding vertices, we need to re-base the vertex location.
+								# Because currently, it has (0, 0, 0) as the start of it's own cell, but now (0, 0, 0) will be the start of the other cell.
+								for j in range(0, array.size()):
+									var diff : Vector3 = other_index - cell_index
+									array[j] = array[j] - diff
+							
+							modules[other_index][i] += array
+						break
+				
+				if !added_to_other:
+					# There was no other cell we could add this one to.
+					# So add it by itself.
+					modules[cell_index] = cells[cell_index]
+			else:
+				# This cell is not connected to any other cell.
+				# So it is it's own module.
+				modules[cell_index] = cells[cell_index]
+		
 		# Create a new mesh instance for each module.
-		# TODO: have modules stretch across multiple cells
-		for module_index in cells.keys():
+		for module_index in modules.keys():
 			# Turn the module array into something that the ArrayMesh will accept as input.
-			var module : Array = array_mesh_input_from_generic_array(cells[module_index])
+			var module : Array = array_mesh_input_from_generic_array(modules[module_index])
 			
 			# Create an ArrayMesh from the module.
 			var arr_mesh := ArrayMesh.new()
@@ -264,7 +337,7 @@ func extract_modules():
 			modules_target.add_child(result_mesh_instance)
 			result_mesh_instance.set_owner(modules_target.owner)
 		
-		print("%d modules extracted from `%s`, into `%s`" % [cells.size(), mesh_instance.name, modules_target.name])
+		print("%d modules extracted from `%s`, into `%s`" % [modules.size(), mesh_instance.name, modules_target.name])
 	
 	# Extraction done, reset the ui.
 	dock.reset_source_and_target()
