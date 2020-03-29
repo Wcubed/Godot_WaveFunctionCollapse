@@ -1,7 +1,10 @@
 tool
 extends EditorPlugin
 
+# The name we give the plugin dock, so we can find it again.
 const DOCK_NAME := "__RUNNING_WFC_DOCK"
+# Epsilon used to compare floats.
+const FLOAT_EPSILON = 0.00001
 
 var dock: WcfDock = null
 
@@ -21,6 +24,8 @@ var cell_size : Vector3 = Vector3(1, 1, 1)
 # Slot: A cell on the grid which can house a module.
 #       This is where the modules are placed into during generation.
 #       A module that occupies multiple cells will fill that many slots.
+
+# TODO: do we want an "undo" functionality? See Godo's `UndoRedo` documentation.
 
 func _enter_tree():
 	print("Wave function collaps plugin loaded")
@@ -218,7 +223,7 @@ func extract_modules():
 					# We have a triangle.
 					# Determine which cell this face is in.
 					# TODO: be able to stretch multiple cells.
-					var module_index := determine_grid_cell_indexes_of_face(face[ArrayMesh.ARRAY_VERTEX])
+					var module_index : Vector3 = determine_grid_cell_indexes_of_face(face[ArrayMesh.ARRAY_VERTEX])[0]
 					
 					# Normalize the vertex locations in the cell.
 					for i in face[ArrayMesh.ARRAY_VERTEX].size():
@@ -266,67 +271,55 @@ func extract_modules():
 
 # Takes a 3 vertex face and determines in which grid cell it is located.
 # The face is an Array of 3 Vector3s, representing the 3 vertices of the face.
-# TODO: If it stretches between two or three grid cells, it will return all of them.
-# If it sits exactly on the border of two grid cells, it will return both.
-# TODO: If a faces edge stretches accros more than 2 grid cells, the grid cells in-between will be ignored. So don't do this.
-# TODO: If it can't decisively say which grid cells a face belongs to, it will return all of them.
-# ! This can probably be done more efficient. But I have currently no clue how.
-func determine_grid_cell_indexes_of_face(face_vertices: Array) -> Vector3:
-	# First, we will find each grid cell that each vertex touches.
-	var cells_per_vertex : Array = [[], [], []]
-	for i in range(0, 3):
-		# This is the cell that the vertex is in, if it isn't on the edge of a cell.
-		var base_cell : Vector3 = (face_vertices[i] / cell_size).floor()
-		var pos_in_cell : Vector3 = face_vertices[i] - base_cell
+# It returns an Array of 1 or more Vector3s, representing which grid cells this face is in.
+# The only two cases it does not like:
+# 1. A face is completely on a face, edge or corner of a cell, in that case it returns an empty array.
+# 2. A face is so large that there are cells in the middle that the edges do not go through:
+#    In that case the middle cells are not returned.
+func determine_grid_cell_indexes_of_face(face_vertices: Array) -> Array:
+	var cells := []
+	# Take steps of a fraction of a cells diagonal length.
+	var step_size := cell_size.length() * 0.1
+	
+	# Analyze all 3 lines.
+	for i in range(0, face_vertices.size()):
+		var line_begin : Vector3 = face_vertices[i]
+		var line_end : Vector3 = face_vertices[(i + 1) % face_vertices.size()]
 		
-		cells_per_vertex[i].append(base_cell)
-	
-		# Check if the vertex is on a face, edge or corner.
-		# Yes, each is a separate "if" statement, and not an "elif", because if we are in the corner, we need to actually add 7 possible modules.
-		if pos_in_cell.x == 0.0:
-			# On the x face.
-			cells_per_vertex[i].append(Vector3(base_cell.x - 1, base_cell.y, base_cell.z))
-		if pos_in_cell.y == 0.0:
-			# On the y face.
-			cells_per_vertex[i].append(Vector3(base_cell.x, base_cell.y - 1, base_cell.z))
-		if pos_in_cell.z == 0.0:
-			# On the z face.
-			cells_per_vertex[i].append(Vector3(base_cell.x, base_cell.y, base_cell.z - 1))
+		# ALways step along the line from small to large.
+		# If that would not be the case, swap the points so it is.
+		if line_begin > line_end:
+			var temp = line_begin
+			line_begin = line_end
+			line_end = temp
 		
-		if pos_in_cell.x == 0.0 && pos_in_cell.y == 0.0:
-			# On the xy edge.
-			cells_per_vertex[i].append(Vector3(base_cell.x - 1, base_cell.y - 1, base_cell.z))
-		if pos_in_cell.y == 0.0 && pos_in_cell.z == 0.0:
-			# On the yz edge.
-			cells_per_vertex[i].append(Vector3(base_cell.x, base_cell.y - 1, base_cell.z - 1))
-		if pos_in_cell.z == 0.0 && pos_in_cell.x == 0.0:
-			# On the zx edge.
-			cells_per_vertex[i].append(Vector3(base_cell.x - 1, base_cell.y, base_cell.z - 1))
+		var direction := line_begin.direction_to(line_end)
+		var step := direction * step_size
 		
-		if pos_in_cell == Vector3(0, 0, 0):
-			# In the xyz corner.
-			cells_per_vertex[i].append(Vector3(base_cell.x - 1, base_cell.y - 1, base_cell.z - 1))
+		var current_pos := line_begin
+		
+		# Step along the line, and find each cell it goes through.
+		while current_pos <= line_end:
+			var cell := (current_pos / cell_size).floor()
+			var pos_in_cell = current_pos - cell
+			
+			# Are we between two or more cells?
+			if f_equals(pos_in_cell.x, 0) || f_equals(pos_in_cell.y, 0) || f_equals(pos_in_cell.z, 0) || f_equals(pos_in_cell.x, cell_size.x) || f_equals(pos_in_cell.y, cell_size.y) || f_equals(pos_in_cell.z, cell_size.z):
+				# We don't know which of the cells to pick, so continue.
+				pass
+			else:
+				# We are in a single cell, add it.
+				# Only add cells once.
+				if cells.find(cell) == -1:
+					cells.append(cell)
+			
+			# Next step along the line.
+			current_pos += step
 	
-	var result : Array = []
-	# For now, we ignore the cases where the face can be in multiple modules at once.
-	# TODO: implement those cases as well.
-	for module in cells_per_vertex[0]:
-		# See if this module is in both other vertices
-		if cells_per_vertex[1].find(module) != -1 && cells_per_vertex[2].find(module) != -1:
-			# Module is in all three vertices.
-			result.append(module)
-	
-	if result.empty():
-		# Ooh, there is no common module between all 3 vertices.
-		# This means we are a module-spanning face.
-		# TODO: find out exactly which modules.
-		print("Can't find common modules in all 3 vertices. This is one for the TODO list.")
-		return Vector3(0, 0, 0)
-	
-	# todo: support faces stretching accross modules.
-	return result[0]
+	return cells
 
-# Converts an [Array of generic Arras] of length ArrayMesh.ARRAY_MAX into something that will be accepted by the ArrayMesh.
+
+# Converts an [Array of generic Arrays] of length ArrayMesh.ARRAY_MAX into something that will be accepted by the ArrayMesh.
 func array_mesh_input_from_generic_array(array: Array) -> Array:
 	if array.size() < ArrayMesh.ARRAY_MAX:
 		# Not enough info, can't do anything logical here.
@@ -352,3 +345,6 @@ func array_mesh_input_from_generic_array(array: Array) -> Array:
 				result[i] = PoolIntArray(array[i])
 	return result
 
+# Compares two floats for approximate equality.
+static func f_equals(a, b, epsilon = FLOAT_EPSILON):
+	return abs(a - b) <= epsilon

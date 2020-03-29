@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=4 format=2]
 
 [ext_resource path="res://assets/modules/single_cell_modules.dae" type="PackedScene" id=1]
 [ext_resource path="res://assets/modules/simple_multi_cell_module.dae" type="PackedScene" id=2]
+[ext_resource path="res://assets/modules/simple_single_cell_module.dae" type="PackedScene" id=3]
 
 [node name="Main" type="Spatial"]
 
@@ -11,3 +12,6 @@
 transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 0 )
 
 [node name="simple_multi_cell_module" parent="." instance=ExtResource( 2 )]
+
+[node name="simple_single_cell_module" parent="." instance=ExtResource( 3 )]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 0 )
